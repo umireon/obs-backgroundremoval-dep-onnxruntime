@@ -55,5 +55,6 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: onnxruntime-test
-          path: build.tar.gz
-
+          path: |
+            build/Ort-prefix/lib
+            build/Ort-prefix/include
