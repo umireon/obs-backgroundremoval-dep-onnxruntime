@@ -1,0 +1,58 @@
+name: CMake
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Support longpaths
+        run: |
+          git config --system core.longpaths true
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+            -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+
+      - uses: actions/checkout@v3
+
+      - name: Install ccache
+        run: |
+          Invoke-WebRequest https://github.com/ccache/ccache/releases/download/v4.7.4/ccache-4.7.4-windows-x86_64.zip -OutFile ${{ github.workspace }}/ccache-4.7.4-windows-x86_64.zip
+          Expand-Archive -Path ccache-4.7.4-windows-x86_64.zip -DestinationPath ${{ github.workspace }}
+          "${{ github.workspace }}/ccache-4.7.4-windows-x86_64" >> $Env:GITHUB_PATH
+          
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --set-config=cache_dir="${{ github.workspace }}/.ccache"
+          ccache --set-config=max_size="4096M"
+          ccache --set-config=compression=true
+          ccache -z
+
+      - name: Restore Compilation Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: windows-${{ matrix.arch }}-ccache-plugin-${{ hashFiles('cmake/BuildMyOnnxruntime.cmake') }}
+
+      - name: Configure CMake
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: onnxruntime-test
+          path: |
+            build/Ort-prefix/lib
+            build/Ort-prefix/include
