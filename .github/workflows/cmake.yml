@@ -50,8 +50,6 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-      - name: Archive the build directory
-        run: tar -czf build.tar.gz build
       - uses: actions/upload-artifact@v3
         with:
           name: onnxruntime-test
